@@ -1,5 +1,5 @@
 ---
-import { sanity } from '../lib/sanityClient'
+import { client as sanity } from '../lib/sanityClient';
 
 const recipes = await sanity.fetch(`*[_type == "recipe"] | order(_createdAt desc){
   _id,
