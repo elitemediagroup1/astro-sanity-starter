@@ -1,0 +1,43 @@
+---
+import { sanity } from '../lib/sanityClient'
+
+const recipes = await sanity.fetch(`*[_type == "recipe"] | order(_createdAt desc){
+  _id,
+  title,
+  slug,
+  excerpt,
+  mainImage {
+    asset->{
+      url
+    }
+  }
+}`)
+---
+
+<html lang="en">
+  <head>
+    <title>Recipes | Chef Matt Dunn</title>
+  </head>
+  <body>
+    <main>
+      <h1>All Recipes</h1>
+      <ul>
+        {recipes.map(recipe => (
+          <li>
+            <a href={`/${recipe.slug.current}`}>
+              <h2>{recipe.title}</h2>
+              {recipe.mainImage?.asset?.url && (
+                <img
+                  src={recipe.mainImage.asset.url}
+                  alt={recipe.title}
+                  width="300"
+                />
+              )}
+              <p>{recipe.excerpt}</p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </main>
+  </body>
+</html>

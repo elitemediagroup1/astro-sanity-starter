@@ -1,0 +1,125 @@
+---
+import { client as sanity } from '../../lib/sanityClient';
+import { AstroError } from 'astro/errors';
+
+export async function getStaticPaths() {
+  const recipes = await sanity.fetch(`*[_type == "recipe" && defined(slug.current)]{
+    slug
+  }`);
+
+  console.log("🔍 ENV", import.meta.env.SANITY_PROJECT_ID, import.meta.env.SANITY_DATASET);
+  console.log("🍳 Recipes result", recipes);
+
+  return recipes.map(recipe => ({
+    params: { slug: recipe.slug.current }
+  }));
+}
+
+const { slug } = Astro.params;
+
+const recipe = await sanity.fetch(
+  `*[_type == "recipe" && slug.current == $slug][0]{
+    title,
+    excerpt,
+    mainImage {
+      asset->{ url }
+    },
+    ingredients,
+    body,
+    tags,
+    prepTime,
+    cookTime,
+    difficulty
+  }`,
+  { slug }
+);
+
+if (!recipe) {
+  throw new AstroError({
+    message: `Recipe not found for slug: ${slug}`,
+    status: 404
+  });
+}
+---
+<!-- TEMPLATE SECTION: Everything after here is just frontend HTML -->
+<html lang="en">
+  <head>
+    <title>{recipe.title} | Chef Matt Dunn</title>
+    <meta name="description" content={recipe.excerpt} />
+  </head>
+  <body>
+    <main>
+      <h1>{recipe.title}</h1>
+
+      {recipe.mainImage?.asset?.url && (
+        <img src={recipe.mainImage.asset.url} alt={recipe.title} width="400" />
+      )}
+
+      <p><strong>Prep Time:</strong> {recipe.prepTime || 'N/A'} mins</p>
+      <p><strong>Cook Time:</strong> {recipe.cookTime || 'N/A'} mins</p>
+      <p><strong>Difficulty:</strong> {recipe.difficulty || 'N/A'}</p>
+
+      <p>{recipe.excerpt}</p>
+
+      <h2>Ingredients</h2>
+      <ul>
+        {recipe.ingredients?.map(ingredient => <li>{ingredient}</li>)}
+      </ul>
+
+      <h2>Instructions</h2>
+<ol>
+  {recipe.body?.map((block) => (
+    block._type === 'block' && block.children?.length > 0 && (
+      <li>{block.children.map((child) => child.text).join('')}</li>
+    )
+  ))}
+</ol>
+
+      {recipe.tags?.length > 0 && (
+  <>
+    <h3>Tags</h3>
+    <div>
+      {recipe.tags.map(tag => (
+        <span class="tag">#{tag}</span>
+      ))}
+    </div>
+  </>
+)}
+    </main>
+    <style>
+  main {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: system-ui, sans-serif;
+  }
+
+  img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+
+  h1, h2, h3 {
+    color: #333;
+    margin-top: 2rem;
+  }
+
+  ul, ol {
+    margin-left: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.5rem;
+  }
+
+  .tag {
+    display: inline-block;
+    margin-right: 8px;
+    background: #eee;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+</style>
+  </body>
+</html>
